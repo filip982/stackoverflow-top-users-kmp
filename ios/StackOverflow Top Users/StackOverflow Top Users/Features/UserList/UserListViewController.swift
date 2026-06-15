@@ -3,6 +3,7 @@ import Networking
 
 
 final class UserListViewController: UIViewController {
+    private let viewModel: UserListViewModel
 
     private let titleLabel: UILabel = {
         let label = UILabel()
@@ -13,10 +14,18 @@ final class UserListViewController: UIViewController {
         return label
     }()
 
+    init(viewModel: UserListViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         setupTitleLabel()
+        Task { await viewModel.load() }
     }
 
     private func setupTitleLabel() {
