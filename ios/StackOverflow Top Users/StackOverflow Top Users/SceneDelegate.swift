@@ -11,12 +11,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         let client = RemoteClient() 
         let userService = StackOverflowUserService(client: client)
+        let imageLoader = RemoteImageService(client: client)
 
         let viewModel = UserListViewModel(
-            userService: userService,
+            userService: userService
         )
         let viewController = UserListViewController(
             viewModel: viewModel,
+            imageLoader: imageLoader
         )
 
         let navController = UINavigationController(rootViewController: viewController)

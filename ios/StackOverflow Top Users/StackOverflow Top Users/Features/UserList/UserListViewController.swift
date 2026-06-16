@@ -4,9 +4,11 @@ final class UserListViewController: UIViewController {
     private let viewModel: UserListViewModel
     private let tableView = UITableView()
     private var users: [StackOverflowUser] = []
+    private let imageLoader: any ImageLoading
 
-    init(viewModel: UserListViewModel) {
+    init(viewModel: UserListViewModel, imageLoader: any ImageLoading) {
         self.viewModel = viewModel
+        self.imageLoader = imageLoader
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -98,7 +100,7 @@ extension UserListViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: UserCell.reuseID, for: indexPath) as! UserCell
-        cell.configure(with: users[indexPath.row])
+        cell.configure(with: users[indexPath.row], imageLoader: imageLoader)
         return cell
     }
 }
