@@ -1,18 +1,9 @@
 import UIKit
-import Networking
-
 
 final class UserListViewController: UIViewController {
     private let viewModel: UserListViewModel
-
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Stack Overflow"
-        label.font = .preferredFont(forTextStyle: .largeTitle)
-        label.textColor = .label
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
+    private let tableView = UITableView()
+    private var users: [StackOverflowUser] = []
 
     init(viewModel: UserListViewModel) {
         self.viewModel = viewModel
@@ -23,20 +14,91 @@ final class UserListViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        title = "Stack Overflow"
         view.backgroundColor = .systemBackground
-        setupTitleLabel()
+        setupTableView()
+        bindViewModel()
         Task { await viewModel.load() }
     }
 
-    private func setupTitleLabel() {
-        view.addSubview(titleLabel)
+    private func setupTableView() {
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.dataSource = self
+        tableView.register(UserCell.self, forCellReuseIdentifier: UserCell.reuseID)
+        view.addSubview(tableView)
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            titleLabel.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor, constant: 16),
-            titleLabel.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor, constant: -16),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
+    }
+
+    private func bindViewModel() {
+        viewModel.onChange = { [weak self] in
+            self?.render()
+        }
+    }
+
+    private func render() {
+        switch viewModel.state {
+        case .loading:
+            tableView.backgroundView = makeMessageView(text: "Loading…", showRetry: false)
+            users = []
+            tableView.reloadData()
+        case .loaded(let list):
+            tableView.backgroundView = nil
+            users = list
+            tableView.reloadData()
+        case .error(let message):
+            users = []
+            tableView.reloadData()
+            tableView.backgroundView = makeMessageView(text: message, showRetry: true)
+        }
+    }
+
+    private func makeMessageView(text: String, showRetry: Bool) -> UIView {
+        let label = UILabel()
+        label.text = text
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.numberOfLines = 0
+
+        let stack = UIStackView(arrangedSubviews: [label])
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        if showRetry {
+            let button = UIButton(type: .system)
+            button.setTitle("Retry", for: .normal)
+            button.addAction(UIAction { [weak self] _ in
+                Task { await self?.viewModel.load() }
+            }, for: .touchUpInside)
+            stack.addArrangedSubview(button)
+        }
+
+        let container = UIView()
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 32),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -32),
+        ])
+        return container
+    }
+}
+
+extension UserListViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        users.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: UserCell.reuseID, for: indexPath) as! UserCell
+        cell.configure(with: users[indexPath.row])
+        return cell
     }
 }

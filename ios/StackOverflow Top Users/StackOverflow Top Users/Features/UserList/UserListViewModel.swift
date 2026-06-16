@@ -2,6 +2,17 @@ import Foundation
 
 @MainActor
 final class UserListViewModel {
+    enum State {
+        case loading
+        case loaded([StackOverflowUser])
+        case error(String)
+    }
+
+    private(set) var state: State = .loading {
+        didSet { onChange?() }
+    }
+
+    var onChange: (() -> Void)?
 
     private let userService: any UserService
 
@@ -10,15 +21,12 @@ final class UserListViewModel {
     }
 
     func load() async {
+        state = .loading
         do {
             let users = try await userService.topUsers()
-            if users.isEmpty {
-                debugPrint("🙈 No users")
-            } else {
-                debugPrint("✅ Success: \(users.count) users fetched")
-            }
+            state = users.isEmpty ? .error("No users found.") : .loaded(users)
         } catch {
-            debugPrint("🔴 Error: \(error.localizedDescription)")
+            state = .error("Couldn't load users. Check your connection and try again.")
         }
     }
 }
