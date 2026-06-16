@@ -7,6 +7,8 @@ final class UserCell: UITableViewCell {
     private let repLabel = UILabel()
     private let avatarView = UIImageView()
     private var imageTask: Task<Void, Never>?
+    private let followButton = UIButton(type: .system)
+    var onToggleFollow: (() -> Void)?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -30,7 +32,13 @@ final class UserCell: UITableViewCell {
         textStack.axis = .vertical
         textStack.spacing = 2
 
-        let hStack = UIStackView(arrangedSubviews: [avatarView, textStack])
+        followButton.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
+        followButton.setContentHuggingPriority(.required, for: .horizontal)
+        followButton.addAction(UIAction { [weak self] _ in
+            self?.onToggleFollow?()
+        }, for: .touchUpInside)
+
+        let hStack = UIStackView(arrangedSubviews: [avatarView, textStack, followButton])
         hStack.axis = .horizontal
         hStack.spacing = 12
         hStack.alignment = .center
@@ -45,6 +53,11 @@ final class UserCell: UITableViewCell {
             avatarView.widthAnchor.constraint(equalToConstant: 44),
             avatarView.heightAnchor.constraint(equalToConstant: 44),
         ])
+    }
+
+    func setFollowed(_ followed: Bool) {
+        followButton.setTitle(followed ? "Following" : "Follow", for: .normal)
+        followButton.tintColor = followed ? .systemGray : .systemBlue
     }
 
     func configure(with user: StackOverflowUser, imageLoader: any ImageLoading) {
@@ -63,5 +76,6 @@ final class UserCell: UITableViewCell {
         super.prepareForReuse()
         imageTask?.cancel()
         avatarView.image = nil
+        onToggleFollow = nil
     }
 }

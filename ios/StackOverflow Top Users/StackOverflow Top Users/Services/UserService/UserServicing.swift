@@ -1,5 +1,5 @@
 import Foundation
 
-public protocol UserService: Sendable {
+public protocol UserServicing: Sendable {
     func topUsers() async throws -> [StackOverflowUser]
 }

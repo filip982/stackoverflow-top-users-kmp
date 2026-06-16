@@ -100,7 +100,14 @@ extension UserListViewController: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: UserCell.reuseID, for: indexPath) as! UserCell
-        cell.configure(with: users[indexPath.row], imageLoader: imageLoader)
+        let user = users[indexPath.row]
+        cell.configure(with: user, imageLoader: imageLoader)
+        cell.setFollowed(viewModel.isFollowed(user))
+        cell.onToggleFollow = { [weak self, weak cell] in
+            guard let self else { return }
+            self.viewModel.toggleFollow(user)
+            cell?.setFollowed(self.viewModel.isFollowed(user))
+        }
         return cell
     }
 }

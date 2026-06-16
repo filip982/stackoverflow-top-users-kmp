@@ -2,7 +2,7 @@ import Foundation
 import Networking
 
 
-public struct StackOverflowUserService: UserService {
+public struct StackOverflowUserService: UserServicing {
     private let client: any Client
     private let decoder = JSONDecoder()
 

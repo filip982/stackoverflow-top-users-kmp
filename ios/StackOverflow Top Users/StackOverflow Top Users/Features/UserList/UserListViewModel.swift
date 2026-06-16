@@ -14,10 +14,12 @@ final class UserListViewModel {
 
     var onChange: (() -> Void)?
 
-    private let userService: any UserService
+    private let userService: any UserServicing
+    private let followStore: any FollowStoring
 
-    init(userService: any UserService) {
+    init(userService: any UserServicing, followStore: any FollowStoring) {
         self.userService = userService
+        self.followStore = followStore
     }
 
     func load() async {
@@ -28,5 +30,14 @@ final class UserListViewModel {
         } catch {
             state = .error("Couldn't load users. Check your connection and try again.")
         }
+    }
+
+    func isFollowed(_ user: StackOverflowUser) -> Bool {
+        followStore.isFollowed(user.id)
+    }
+
+    func toggleFollow(_ user: StackOverflowUser) {
+        let newValue = !followStore.isFollowed(user.id)
+        followStore.setFollowed(newValue, for: user.id)
     }
 }
