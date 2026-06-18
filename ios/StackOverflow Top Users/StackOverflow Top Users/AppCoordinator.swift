@@ -25,7 +25,7 @@ class AppCoordinator {
 
     func showUserDetails(for user: StackOverflowUser) {
         let viewModel = UserDetailsViewModel(user: user, followStore: followStore)
-        let viewController = UserDetailsViewController(viewModel: viewModel)
+        let viewController = UserDetailsViewController(viewModel: viewModel, imageLoader: imageLoader)
         self.navController.pushViewController(viewController, animated: true)
     }
 }

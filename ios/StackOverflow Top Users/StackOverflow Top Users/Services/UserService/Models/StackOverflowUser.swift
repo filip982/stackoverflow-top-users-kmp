@@ -6,14 +6,15 @@ public struct StackOverflowUser: Codable, Equatable, Identifiable, Sendable {
     public let reputation: Int
     public let profileImageURL: URL?
     public let websiteURL: URL?
+    public let location: String?
 
-
-    public init(id: Int, name: String, reputation: Int, profileImageURL: URL?, websiteURL: URL?) {
+    public init(id: Int, name: String, reputation: Int, profileImageURL: URL?, websiteURL: URL?, location: String? = nil) {
         self.id = id
         self.name = name
         self.reputation = reputation
         self.profileImageURL = profileImageURL
         self.websiteURL = websiteURL
+        self.location = location
     }
 
     enum CodingKeys: String, CodingKey {
@@ -22,6 +23,7 @@ public struct StackOverflowUser: Codable, Equatable, Identifiable, Sendable {
         case reputation
         case profileImageURL = "profile_image"
         case websiteURL = "website_url"
+        case location
     }
 
     public init(from decoder: Decoder) throws {
@@ -40,6 +42,7 @@ public struct StackOverflowUser: Codable, Equatable, Identifiable, Sendable {
         } else {
             websiteURL = nil
         }
+        location = try container.decodeIfPresent(String.self, forKey: .location)
     }
 }
 

@@ -4,7 +4,10 @@ import Foundation
 final class UserDetailsViewModel {
     let nameString: String
     let repString: String
+    let locationString: String
+    let websiteURL: URL?
 
+    let profileImageURL: URL?
     private let user: StackOverflowUser
     private let followStore: any FollowStoring
 
@@ -13,6 +16,9 @@ final class UserDetailsViewModel {
         self.followStore = followStore
         nameString = user.name
         repString = "rep " + user.reputation.formatted(.number.grouping(.automatic))
+        locationString = user.location ?? "Location not available"
+        websiteURL = user.websiteURL
+        profileImageURL = user.profileImageURL
     }
 
     var isFollowed: Bool {
