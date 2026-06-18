@@ -1,29 +1,16 @@
 import UIKit
-import Networking
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
-
+    private var coordinator: AppCoordinator?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
-        let client = RemoteClient() 
-        let userService = StackOverflowUserService(client: client)
-        let imageLoader = RemoteImageService(client: client)
-        let followStore = UserDefaultsFollowStore()
-
-        let viewModel = UserListViewModel(
-            userService: userService,
-            followStore: followStore
-        )
-        let viewController = UserListViewController(
-            viewModel: viewModel,
-            imageLoader: imageLoader
-        )
-
-        let navController = UINavigationController(rootViewController: viewController)
+        let appCoordinator = AppCoordinator()
+        coordinator = appCoordinator
+        let navController = appCoordinator.navController
 
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = navController

@@ -16,10 +16,12 @@ final class UserListViewModel {
 
     private let userService: any UserServicing
     private let followStore: any FollowStoring
+    private weak var coordinator: AppCoordinator?
 
-    init(userService: any UserServicing, followStore: any FollowStoring) {
+    init(userService: any UserServicing, followStore: any FollowStoring, coordinator: AppCoordinator? = nil) {
         self.userService = userService
         self.followStore = followStore
+        self.coordinator = coordinator
     }
 
     func load() async {
@@ -39,5 +41,9 @@ final class UserListViewModel {
     func toggleFollow(_ user: StackOverflowUser) {
         let newValue = !followStore.isFollowed(user.id)
         followStore.setFollowed(newValue, for: user.id)
+    }
+
+    func showUserDetails(_ user: StackOverflowUser) {
+        coordinator?.showUserDetails(for: user)
     }
 }

@@ -26,6 +26,7 @@ final class UserListViewController: UIViewController {
     private func setupTableView() {
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
+        tableView.delegate = self
         tableView.register(UserCell.self, forCellReuseIdentifier: UserCell.reuseID)
         view.addSubview(tableView)
         NSLayoutConstraint.activate([
@@ -109,5 +110,13 @@ extension UserListViewController: UITableViewDataSource {
             cell?.setFollowed(self.viewModel.isFollowed(user))
         }
         return cell
+    }
+}
+
+extension UserListViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let user = users[indexPath.row]
+        self.viewModel.showUserDetails(user)
     }
 }

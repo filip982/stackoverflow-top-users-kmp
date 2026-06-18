@@ -2,23 +2,10 @@ import Testing
 import Foundation
 @testable import StackOverflow_Top_Users
 
-private final class FakeUserService: UserServicing, @unchecked Sendable {
-    var result: Result<[StackOverflowUser], Error> = .success([])
-    func topUsers() async throws -> [StackOverflowUser] { try result.get() }
-}
-
-private final class InMemoryFollowStore: FollowStoring, @unchecked Sendable {
-    private var ids: Set<Int> = []
-    func isFollowed(_ id: Int) -> Bool { ids.contains(id) }
-    func setFollowed(_ followed: Bool, for id: Int) {
-        if followed { ids.insert(id) } else { ids.remove(id) }
-    }
-}
-
 @MainActor
 struct UserListViewModelTests {
     private func user(_ id: Int) -> StackOverflowUser {
-        StackOverflowUser(id: id, name: "User \(id)", reputation: 100, profileImageURL: nil)
+        StackOverflowUser(id: id, name: "User \(id)", reputation: 100, profileImageURL: nil, websiteURL: nil)
     }
 
     @Test func loadsUsersIntoLoadedState() async {
