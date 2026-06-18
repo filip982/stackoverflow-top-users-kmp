@@ -33,55 +33,70 @@ final class UserDetailsViewController: UIViewController {
         avatarView.clipsToBounds = true
         avatarView.backgroundColor = .secondarySystemFill
 
-        nameLabel.font = .preferredFont(forTextStyle: .title2)
-        nameLabel.textAlignment = .center
+        let detailsStack = UIStackView(arrangedSubviews: [
+            makeRow(label: "Name", valueView: nameLabel),
+            makeRow(label: "Reputation", valueView: repLabel),
+            makeRow(label: "Location", valueView: locationLabel),
+            makeRow(label: "Website", valueView: websiteButton),
+        ])
+        detailsStack.axis = .vertical
+        detailsStack.spacing = 10
 
-        repLabel.font = .preferredFont(forTextStyle: .subheadline)
-        repLabel.textColor = .secondaryLabel
-        repLabel.textAlignment = .center
-
-        locationLabel.font = .preferredFont(forTextStyle: .subheadline)
-        locationLabel.textColor = .secondaryLabel
-        locationLabel.textAlignment = .center
-
-        websiteButton.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
+        websiteButton.contentHorizontalAlignment = .left
         websiteButton.addAction(UIAction { [weak self] _ in
             guard let url = self?.viewModel.websiteURL else { return }
             UIApplication.shared.open(url)
         }, for: .touchUpInside)
 
-        followButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
+        var followConfig = UIButton.Configuration.bordered()
+        followConfig.cornerStyle = .medium
+        followButton.configuration = followConfig
         followButton.addAction(UIAction { [weak self] _ in
             self?.viewModel.toggleFollow()
             self?.setFollowed(self?.viewModel.isFollowed ?? false)
         }, for: .touchUpInside)
 
-        let vStack = UIStackView(arrangedSubviews: [avatarView, nameLabel, repLabel, locationLabel, websiteButton, followButton])
-        vStack.axis = .vertical
-        vStack.spacing = 8
-        vStack.alignment = .center
-        vStack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(vStack)
+        let outerStack = UIStackView(arrangedSubviews: [avatarView, detailsStack, followButton])
+        outerStack.axis = .vertical
+        outerStack.spacing = 24
+        outerStack.alignment = .center
+        outerStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(outerStack)
 
         NSLayoutConstraint.activate([
-            vStack.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor),
-            vStack.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
-            vStack.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor, constant: 24),
+            outerStack.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor),
+            outerStack.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
+            outerStack.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor, constant: 24),
             avatarView.widthAnchor.constraint(equalToConstant: 144),
             avatarView.heightAnchor.constraint(equalToConstant: 144),
+            detailsStack.widthAnchor.constraint(equalTo: outerStack.widthAnchor),
         ])
+    }
+
+    private func makeRow(label: String, valueView: UIView) -> UIStackView {
+        let titleLabel = UILabel()
+        titleLabel.text = label + ":"
+        titleLabel.font = .preferredFont(forTextStyle: .subheadline)
+        titleLabel.textColor = .secondaryLabel
+        titleLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let row = UIStackView(arrangedSubviews: [titleLabel, valueView])
+        row.axis = .horizontal
+        row.spacing = 6
+        row.alignment = .firstBaseline
+        return row
     }
 
     private func bindViewModel() {
         nameLabel.text = viewModel.nameString
+        nameLabel.font = .preferredFont(forTextStyle: .subheadline)
         repLabel.text = viewModel.repString
+        repLabel.font = .preferredFont(forTextStyle: .subheadline)
         locationLabel.text = viewModel.locationString
-        if let host = viewModel.websiteURL?.host {
-            websiteButton.setTitle(host, for: .normal)
-            websiteButton.isHidden = false
-        } else {
-            websiteButton.isHidden = true
-        }
+        locationLabel.font = .preferredFont(forTextStyle: .subheadline)
+        locationLabel.textColor = .label
+        websiteButton.setTitle(viewModel.websiteURL?.host ?? "N/A", for: .normal)
+        websiteButton.isEnabled = viewModel.websiteURL != nil
         setFollowed(viewModel.isFollowed)
         loadAvatar()
     }
@@ -96,8 +111,9 @@ final class UserDetailsViewController: UIViewController {
     }
 
     private func setFollowed(_ followed: Bool) {
-        followButton.setTitle(followed ? "Unfollow" : "Follow", for: .normal)
-        followButton.tintColor = followed ? .systemGray : .systemBlue
+        followButton.configuration?.title = followed ? "Unfollow" : "Follow"
+        followButton.configuration?.baseBackgroundColor = followed ? .systemGray5 : .systemBlue.withAlphaComponent(0.1)
+        followButton.tintColor = followed ? .secondaryLabel : .systemBlue
     }
 
     override func viewDidLayoutSubviews() {

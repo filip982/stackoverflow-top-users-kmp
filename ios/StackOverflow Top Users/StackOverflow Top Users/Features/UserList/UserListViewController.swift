@@ -20,6 +20,12 @@ final class UserListViewController: UIViewController {
         view.backgroundColor = .systemBackground
         setupTableView()
         bindViewModel()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image: UIImage(systemName: "arrow.up.arrow.down"),
+            style: .plain,
+            target: self,
+            action: #selector(showSortOptions)
+        )
         Task { await viewModel.load() }
     }
 
@@ -110,6 +116,26 @@ extension UserListViewController: UITableViewDataSource {
             cell?.setFollowed(self.viewModel.isFollowed(user))
         }
         return cell
+    }
+}
+
+extension UserListViewController {
+    @objc private func showSortOptions() {
+        let sortVM = SortOptionsViewModel(currentSort: viewModel.currentSort)
+        sortVM.onApply = { [weak self] config in
+            self?.viewModel.applySort(config)
+            self?.dismiss(animated: true)
+        }
+        sortVM.onCancel = { [weak self] in
+            self?.dismiss(animated: true)
+        }
+        let sortVC = SortOptionsViewController(viewModel: sortVM)
+        let nav = UINavigationController(rootViewController: sortVC)
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(nav, animated: true)
     }
 }
 

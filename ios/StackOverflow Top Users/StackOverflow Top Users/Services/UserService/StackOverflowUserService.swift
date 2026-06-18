@@ -10,7 +10,7 @@ public struct StackOverflowUserService: UserServicing {
         self.client = client
     }
 
-    public func topUsers() async throws -> [StackOverflowUser] {
+    public func topUsers(sort: SortConfiguration) async throws -> [StackOverflowUser] {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.stackexchange.com"
@@ -18,8 +18,8 @@ public struct StackOverflowUserService: UserServicing {
         components.queryItems = [
             URLQueryItem(name: "page", value: "1"),
             URLQueryItem(name: "pagesize", value: "20"),
-            URLQueryItem(name: "order", value: "desc"),
-            URLQueryItem(name: "sort", value: "reputation"),
+            URLQueryItem(name: "order", value: sort.order.rawValue),
+            URLQueryItem(name: "sort", value: sort.option.rawValue),
             URLQueryItem(name: "site", value: "stackoverflow"),
         ]
         guard let url = components.url else {

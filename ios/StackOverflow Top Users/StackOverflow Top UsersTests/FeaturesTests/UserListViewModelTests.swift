@@ -42,4 +42,23 @@ struct UserListViewModelTests {
         vm.toggleFollow(u)
         #expect(vm.isFollowed(u) == false)
     }
+
+    @Test func defaultSortIsReputationDescending() {
+        let vm = UserListViewModel(userService: FakeUserService(), followStore: InMemoryFollowStore())
+        #expect(vm.currentSort == SortConfiguration())
+        #expect(vm.currentSort.option == .reputation)
+        #expect(vm.currentSort.order == .descending)
+    }
+
+    @Test func applySortUpdatesSortAndLoads() async {
+        let service = FakeUserService()
+        service.result = .success([user(1)])
+        let vm = UserListViewModel(userService: service, followStore: InMemoryFollowStore())
+        let newSort = SortConfiguration(option: .name, order: .ascending)
+        vm.applySort(newSort)
+        #expect(vm.currentSort == newSort)
+        // give the async load a moment to settle
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        if case .loaded = vm.state {} else { Issue.record("expected .loaded after applySort") }
+    }
 }

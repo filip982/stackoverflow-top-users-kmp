@@ -17,6 +17,7 @@ final class UserListViewModel {
     private let userService: any UserServicing
     private let followStore: any FollowStoring
     private weak var coordinator: AppCoordinator?
+    private(set) var currentSort = SortConfiguration()
 
     init(userService: any UserServicing, followStore: any FollowStoring, coordinator: AppCoordinator? = nil) {
         self.userService = userService
@@ -27,11 +28,16 @@ final class UserListViewModel {
     func load() async {
         state = .loading
         do {
-            let users = try await userService.topUsers()
+            let users = try await userService.topUsers(sort: currentSort)
             state = users.isEmpty ? .error("No users found.") : .loaded(users)
         } catch {
             state = .error("Couldn't load users. Check your connection and try again.")
         }
+    }
+
+    func applySort(_ sort: SortConfiguration) {
+        currentSort = sort
+        Task { await self.load() }
     }
 
     func isFollowed(_ user: StackOverflowUser) -> Bool {

@@ -4,7 +4,7 @@ import Foundation
 
 final class FakeUserService: UserServicing, @unchecked Sendable {
     var result: Result<[StackOverflowUser], Error> = .success([])
-    func topUsers() async throws -> [StackOverflowUser] { try result.get() }
+    func topUsers(sort: SortConfiguration) async throws -> [StackOverflowUser] { try result.get() }
 }
 
 final class InMemoryFollowStore: FollowStoring, @unchecked Sendable {
