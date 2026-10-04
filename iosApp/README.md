@@ -140,7 +140,8 @@ something differently, fix that one file. To see the real names, look at
 - Top-level functions in `HttpClientFactory.ios.kt` become members of `HttpClientFactory_iosKt`.
 - Default arguments aren't exported, so the code passes `httpClient` and every other parameter explicitly.
 - `Outcome<List<User>>` becomes `Outcome<NSArray>`. The code uses its `getOrNull()` and `errorOrNull()` members.
-  `CoreError.Http` becomes `CoreErrorHttp` (nested sealed subclasses are flattened).
+  Nested classes of the non-generic `CoreError` stay nested in Swift (`CoreError.Http`, ObjC `SharedCoreErrorHttp`,
+  confirmed by CI). Nested classes of the generic `Outcome` are flattened (`OutcomeSuccess`, `OutcomeFailure`).
 - `suspend fun invoke(...)` becomes `invoke(...completionHandler:)`. The code calls it on the main actor and bridges
   it with a continuation. Gradle also sets `objcExportSuspendFunctionLaunchThreadRestriction=none`.
 - `Long?` becomes `KotlinLong?`, and `Set<Long>` becomes `Set<KotlinLong>`.

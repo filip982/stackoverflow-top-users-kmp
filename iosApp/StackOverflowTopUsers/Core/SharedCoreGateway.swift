@@ -9,7 +9,9 @@ import Shared
 // - Kotlin `Long` → `Int64`; `Long?` and `Long` inside collections → `KotlinLong` (an NSNumber subclass).
 // - Generic `Outcome<List<User>>` → `Outcome<NSArray>`. We use its `getOrNull()` / `errorOrNull()` members
 //   rather than casting to the nested `Outcome.Success` / `Outcome.Failure` subclasses.
-// - Nested sealed subclasses are flattened: `CoreError.Http` → `CoreErrorHttp`, etc.
+// - Nested classes of a non-generic class stay nested in Swift: `CoreError.Http`, `CoreError.Network`, ...
+//   (ObjC name `SharedCoreErrorHttp`). Nested classes of the generic `Outcome` are flattened
+//   (`OutcomeSuccess`, `OutcomeFailure`) because Swift cannot nest types in imported ObjC generics.
 // - `suspend fun` → completion-handler method (`invoke(option:completionHandler:)`); we call that variant
 //   explicitly from the main actor and bridge with a continuation, so the Kotlin call always starts on
 //   the main thread (the Gradle config also lifts that restriction as a second line of defence).
@@ -135,16 +137,16 @@ enum SharedMapping {
     }
 
     static func errorModel(_ error: CoreError) -> CoreErrorModel {
-        if let http = error as? CoreErrorHttp {
+        if let http = error as? CoreError.Http {
             return .http(code: Int(http.code), apiMessage: http.apiMessage)
         }
-        if error is CoreErrorDecoding {
+        if error is CoreError.Decoding {
             return .decoding(message: error.message)
         }
-        if error is CoreErrorStorage {
+        if error is CoreError.Storage {
             return .storage(message: error.message)
         }
-        // CoreErrorNetwork, and anything a future core version adds.
+        // CoreError.Network, and anything a future core version adds.
         return .network(message: error.message)
     }
 
@@ -223,10 +225,10 @@ enum SharedContractProbe {
     static func mapFailure(_ kind: ErrorKind) -> Result<[UserModel], CoreErrorModel> {
         let error: CoreError
         switch kind {
-        case .network: error = CoreErrorNetwork(cause: nil)
-        case let .http(code, apiMessage): error = CoreErrorHttp(code: code, apiMessage: apiMessage)
-        case .decoding: error = CoreErrorDecoding(cause: nil)
-        case .storage: error = CoreErrorStorage(cause: nil)
+        case .network: error = CoreError.Network(cause: nil)
+        case let .http(code, apiMessage): error = CoreError.Http(code: code, apiMessage: apiMessage)
+        case .decoding: error = CoreError.Decoding(cause: nil)
+        case .storage: error = CoreError.Storage(cause: nil)
         }
         let outcome = OutcomeFailure(error: error)
         return SharedMapping.usersResult(value: outcome.getOrNull(), error: outcome.errorOrNull())
