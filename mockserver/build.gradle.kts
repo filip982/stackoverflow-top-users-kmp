@@ -34,6 +34,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.ktor.client.cio)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.serialization.json)
 }
 
 tasks.test {
