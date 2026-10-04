@@ -13,7 +13,7 @@ import dev.filip.sotopusers.model.Outcome
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -21,6 +21,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * Stores run in `backgroundScope` (their observers never complete). Background work is not counted
+ * by `advanceUntilIdle`, so tests step the scheduler with `runCurrent` - nothing here uses delays.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserDetailStoreTest {
     private val jon = user(22656, "Jon Skeet", location = "Reading", websiteUrl = "http://csharpindepth.com")
@@ -46,13 +50,13 @@ class UserDetailStoreTest {
             assertFalse(awaitItem().isFollowed)
             store.dispatch(UserDetailIntent.ToggleFollow)
             assertTrue(awaitItem().isTogglePending)
-            advanceUntilIdle()
+            runCurrent()
             val settled = expectMostRecentItem()
             assertTrue(settled.isFollowed)
             assertFalse(settled.isTogglePending)
         }
         store.dispatch(UserDetailIntent.ToggleFollow)
-        advanceUntilIdle()
+        runCurrent()
         assertFalse(store.state.value.isFollowed)
         assertEquals(emptySet<Long>(), core.followStore.saved)
     }
@@ -62,7 +66,7 @@ class UserDetailStoreTest {
         val core = core()
         val store = detail(core)
         repeat(4) { store.dispatch(UserDetailIntent.ToggleFollow) }
-        advanceUntilIdle()
+        runCurrent()
         assertEquals(1, core.followStore.saveCount)
         assertTrue(store.state.value.isFollowed)
     }
@@ -72,7 +76,7 @@ class UserDetailStoreTest {
         val core = core(FakeFollowStore().apply { failSaves = true })
         val store = detail(core)
         store.dispatch(UserDetailIntent.ToggleFollow)
-        advanceUntilIdle()
+        runCurrent()
         val message = store.state.value.message
         assertTrue(message is UserMessage.FollowFailed && message.error is CoreError.Storage)
         assertFalse(store.state.value.isFollowed)
@@ -86,14 +90,14 @@ class UserDetailStoreTest {
         val core = core()
         val list = UserListStore(backgroundScope, core.getTopUsers, core.toggleFollow, core.sortUsers, core.repository.followedIdsFlow)
         val detail = detail(core)
-        advanceUntilIdle()
+        runCurrent()
 
         detail.dispatch(UserDetailIntent.ToggleFollow)
-        advanceUntilIdle()
+        runCurrent()
         assertEquals(setOf(jon.id), list.state.value.followedIds)
 
         list.dispatch(UserListIntent.ToggleFollow(jon.id))
-        advanceUntilIdle()
+        runCurrent()
         assertFalse(detail.state.value.isFollowed)
         assertEquals(emptySet<Long>(), list.state.value.followedIds)
     }

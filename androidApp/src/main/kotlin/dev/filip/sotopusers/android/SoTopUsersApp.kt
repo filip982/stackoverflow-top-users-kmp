@@ -43,7 +43,7 @@ class AppContainer(context: Context, baseUrl: String) {
 class StartupNotice(private val error: CoreError.Storage?) {
     private val taken = AtomicBoolean(false)
 
-    fun take(): CoreError.Storage? = error
+    fun take(): CoreError.Storage? = error?.takeIf { taken.compareAndSet(false, true) }
 }
 
 val Context.appContainer: AppContainer get() = (applicationContext as SoTopUsersApp).container

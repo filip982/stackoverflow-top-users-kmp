@@ -24,7 +24,12 @@ sealed interface SortOptionsEffect {
     data object Dismissed : SortOptionsEffect
 }
 
-fun reduceSortOptions(state: SortOptionsState, intent: SortOptionsIntent): SortOptionsState = state
+fun reduceSortOptions(state: SortOptionsState, intent: SortOptionsIntent): SortOptionsState = when (intent) {
+    is SortOptionsIntent.SelectField -> state.copy(draft = state.draft.copy(field = intent.field))
+    is SortOptionsIntent.SelectDirection -> state.copy(draft = state.draft.copy(direction = intent.direction))
+    SortOptionsIntent.Apply -> state.copy(committed = state.draft)
+    SortOptionsIntent.Cancel -> state.copy(draft = state.committed)
+}
 
 class SortOptionsStore(
     scope: CoroutineScope,
@@ -33,5 +38,11 @@ class SortOptionsStore(
     override fun reduce(state: SortOptionsState, message: SortOptionsIntent) = reduceSortOptions(state, message)
 
     override fun dispatch(intent: SortOptionsIntent) {
+        apply(intent)
+        when (intent) {
+            SortOptionsIntent.Apply -> emit(SortOptionsEffect.Applied(state.value.committed))
+            SortOptionsIntent.Cancel -> emit(SortOptionsEffect.Dismissed)
+            else -> Unit
+        }
     }
 }
