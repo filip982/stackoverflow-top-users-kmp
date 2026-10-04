@@ -1,0 +1,7 @@
+// Debug-only settings (see iosApp/README.md).
+//
+// Optional build-time base URL override, written into Info.plist as `MockBaseURL`. Empty = production
+// API. The `MOCK_BASE_URL` launch environment variable (used by the XCUITests) takes precedence.
+// xcconfig treats `//` as a comment, so escape the scheme separator:
+//   MOCK_BASE_URL = http:/$()/localhost:8080
+MOCK_BASE_URL =

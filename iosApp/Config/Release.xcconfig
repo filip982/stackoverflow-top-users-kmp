@@ -1,0 +1,2 @@
+// Release settings. Release builds always talk to https://api.stackexchange.com: the app ignores
+// base-URL overrides outside DEBUG, and the release Info.plist has no MockBaseURL key or ATS exception.
