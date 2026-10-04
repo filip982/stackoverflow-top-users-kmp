@@ -3,7 +3,9 @@ package dev.filip.sotopusers.data
 import dev.filip.sotopusers.model.CoreError
 import dev.filip.sotopusers.model.Outcome
 import dev.filip.sotopusers.model.User
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Single app-scoped source of truth for users and follow state.
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 class UserRepository(
     private val api: UserApiService,
     private val followStore: FollowStore,
+    observerContext: CoroutineContext = Dispatchers.Default,
 ) {
     /** Non-null if persisted follow state was unreadable at startup (it was reset to empty). */
     val startupStorageError: CoreError.Storage? get() = TODO()
@@ -24,4 +27,15 @@ class UserRepository(
 
     /** Flips follow state for [userId]; returns the new state (true = followed). */
     suspend fun toggleFollow(userId: Long): Outcome<Boolean> = TODO()
+
+    /**
+     * Callback-style observation for Swift (no SKIE): [onChange] gets the current set immediately,
+     * then every change, on the repository's observer context (background by default; hop to the
+     * main actor on the Swift side). Call [Cancellable.cancel] to stop.
+     */
+    fun watchFollowedIds(onChange: (Set<Long>) -> Unit): Cancellable = TODO()
+}
+
+fun interface Cancellable {
+    fun cancel()
 }

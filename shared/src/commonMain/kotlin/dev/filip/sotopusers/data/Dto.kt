@@ -1,5 +1,7 @@
 package dev.filip.sotopusers.data
 
+import dev.filip.sotopusers.model.CoreError
+import dev.filip.sotopusers.model.Outcome
 import dev.filip.sotopusers.model.User
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -38,3 +40,6 @@ internal val StackExchangeJson = Json {
 }
 
 internal fun UserDto.toDomain(): User = TODO()
+
+/** Parses a `/2.3/users` body: Success, Http for an API error object, Decoding for anything malformed. */
+internal fun parseUsersResponse(body: String): Outcome<List<User>> = TODO()
