@@ -47,10 +47,20 @@ kotlin {
     jvm {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
+    // Apple integration path (plan §9.5): direct Gradle embed. Xcode's pre-compile build phase runs
+    // `./gradlew :shared:embedAndSignAppleFrameworkForXcode`, which builds this framework for the
+    // active CONFIGURATION/SDK into shared/build/xcode-frameworks/; no separate XCFramework step.
+    // Slices: device arm64 + simulator arm64 only (Apple Silicon; Intel out of scope).
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            // Swift builds the core with `NSUserDefaultsSettings(delegate:)`, so the settings
+            // library's API must be in the framework header under unprefixed names.
+            export(libs.multiplatform.settings)
+            // Belt and braces: the Swift gateway already calls suspend functions on the main
+            // thread, but allow any thread so a future caller cannot crash the bridge.
+            binaryOption("objcExportSuspendFunctionLaunchThreadRestriction", "none")
         }
     }
 
