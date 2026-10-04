@@ -15,10 +15,11 @@ shared/        KMP core (android, jvm, iosArm64, iosSimulatorArm64)
 mockserver/    Ktor JVM fake of GET /2.3/users with per-instance scenarios
 fixtures/      JSON fixtures shared by every test level (mockserver resources +
                generated constants for shared commonTest)
-androidApp/    Compose app (phase A3, placeholder)
+androidApp/    Compose app, MVI stores over the shared core (see androidApp/README.md)
 iosApp/        SwiftUI app (phase A4, placeholder)
 legacy/        previous UIKit app, kept for reference
-.github/workflows/  linux.yml (tests + android/jvm compile), macos.yml (iOS compile + sim tests)
+.github/workflows/  linux.yml (tests, android app unit/Robolectric + assemble, emulator e2e vs mockserver),
+                    macos.yml (iOS compile + sim tests)
 ```
 
 ## Requirements
@@ -34,6 +35,7 @@ legacy/        previous UIKit app, kept for reference
 ./gradlew :shared:testDebugUnitTest  # commonTest on the Android unit-test JVM
 ./gradlew :mockserver:test           # mock server contract
 ./gradlew :shared:assembleDebug      # Android target compiles
+./gradlew :androidApp:testDebugUnitTest :androidApp:assembleDebug   # app store tests + Robolectric smoke, APK
 LIVE_API=1 ./gradlew :shared:jvmTest --tests '*LiveApiSmokeTest*'   # opt-in check against the real API
 
 # macOS only
