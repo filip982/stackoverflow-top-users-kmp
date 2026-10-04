@@ -1,0 +1,40 @@
+package dev.filip.sotopusers.data
+
+import dev.filip.sotopusers.model.User
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNames
+
+/** StackExchange `/2.3/users` wrapper. Also carries the API error object fields, which share the top level. */
+@Serializable
+internal data class UsersResponseDto(
+    val items: List<UserDto>? = null,
+    @SerialName("has_more") val hasMore: Boolean? = null,
+    @SerialName("error_id") val errorId: Int? = null,
+    @SerialName("error_name") val errorName: String? = null,
+    @SerialName("error_message") val errorMessage: String? = null,
+)
+
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+internal data class UserDto(
+    @SerialName("user_id") val userId: Long,
+    @SerialName("display_name") val displayName: String,
+    val reputation: Long,
+    @SerialName("creation_date") val creationDate: Long,
+    // Documented wire name is last_modified_date; last_modify_date accepted for tolerance.
+    @SerialName("last_modified_date") @JsonNames("last_modify_date") val lastModifiedDate: Long? = null,
+    @SerialName("profile_image") val profileImage: String? = null,
+    val location: String? = null,
+    @SerialName("website_url") val websiteUrl: String? = null,
+)
+
+internal val StackExchangeJson = Json {
+    ignoreUnknownKeys = true
+    explicitNulls = false
+    coerceInputValues = true
+}
+
+internal fun UserDto.toDomain(): User = TODO()
