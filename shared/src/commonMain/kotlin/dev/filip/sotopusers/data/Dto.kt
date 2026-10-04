@@ -6,6 +6,7 @@ import dev.filip.sotopusers.model.User
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNames
 
@@ -39,7 +40,38 @@ internal val StackExchangeJson = Json {
     coerceInputValues = true
 }
 
-internal fun UserDto.toDomain(): User = TODO()
+internal fun UserDto.toDomain(): User = User(
+    id = userId,
+    displayName = HtmlEntities.decode(displayName),
+    reputation = reputation,
+    avatarUrl = profileImage.cleaned(),
+    location = location.cleaned(),
+    websiteUrl = websiteUrl.cleaned(),
+    creationDate = creationDate,
+    lastModifiedDate = lastModifiedDate,
+)
+
+private fun String?.cleaned(): String? = this?.takeIf { it.isNotBlank() }?.let(HtmlEntities::decode)
 
 /** Parses a `/2.3/users` body: Success, Http for an API error object, Decoding for anything malformed. */
-internal fun parseUsersResponse(body: String): Outcome<List<User>> = TODO()
+internal fun parseUsersResponse(body: String): Outcome<List<User>> {
+    val dto = try {
+        StackExchangeJson.decodeFromString(UsersResponseDto.serializer(), body)
+    } catch (e: SerializationException) {
+        return Outcome.Failure(CoreError.Decoding(e))
+    } catch (e: IllegalArgumentException) {
+        return Outcome.Failure(CoreError.Decoding(e))
+    }
+    dto.errorId?.let { return Outcome.Failure(CoreError.Http(it, dto.errorMessage?.let(HtmlEntities::decode))) }
+    val items = dto.items ?: return Outcome.Failure(CoreError.Decoding(IllegalStateException("response has no 'items'")))
+    return Outcome.Success(items.map { it.toDomain() })
+}
+
+/** Best-effort extraction of `error_message` from a non-2xx body. */
+internal fun parseApiErrorMessage(body: String): String? = try {
+    StackExchangeJson.decodeFromString(UsersResponseDto.serializer(), body).errorMessage?.let(HtmlEntities::decode)
+} catch (e: SerializationException) {
+    null
+} catch (e: IllegalArgumentException) {
+    null
+}

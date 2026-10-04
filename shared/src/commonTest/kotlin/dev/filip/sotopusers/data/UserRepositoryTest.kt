@@ -8,6 +8,7 @@ import dev.filip.sotopusers.model.CoreError
 import dev.filip.sotopusers.model.Outcome
 import dev.filip.sotopusers.user
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
@@ -21,6 +22,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UserRepositoryTest {
     private val settings = MapSettings()
     private val api = FakeUserApiService()
