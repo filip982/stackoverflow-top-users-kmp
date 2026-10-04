@@ -1,6 +1,7 @@
 package dev.filip.sotopusers.integration
 
 import com.russhwolf.settings.MapSettings
+import dev.filip.sotopusers.StackOverflowCore
 import dev.filip.sotopusers.data.KtorUserApiService
 import dev.filip.sotopusers.data.SettingsFollowStore
 import dev.filip.sotopusers.data.UserRepository
@@ -82,5 +83,14 @@ class MockServerIntegrationTest {
         assertEquals(Outcome.Success(true), ToggleFollow(repository)(byName.first().id))
         val reloaded = UserRepository(api(server().baseUrl), SettingsFollowStore(settings))
         assertEquals(setOf(byName.first().id), reloaded.followedIds())
+    }
+
+    @Test fun coreFactoryWiresRealStackAgainstBaseUrl() = runBlocking<Unit> {
+        val settings = MapSettings()
+        val core = StackOverflowCore(server().baseUrl, settings)
+        assertEquals(20, core.getTopUsers().getOrNull()?.size)
+        assertEquals(Outcome.Success(true), core.toggleFollow(22656))
+        assertEquals(setOf(22656L), core.repository.followedIds())
+        assertEquals(setOf(22656L), StackOverflowCore(server().baseUrl, settings).repository.followedIds())
     }
 }
