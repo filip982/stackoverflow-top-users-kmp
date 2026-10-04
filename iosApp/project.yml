@@ -1,0 +1,155 @@
+# XcodeGen spec — generate with `cd iosApp && xcodegen generate` (see iosApp/README.md).
+# The generated StackOverflowTopUsers.xcodeproj is not committed.
+#
+# Kotlin integration (plan §9.5): direct Gradle embed. A pre-build script runs
+# `:shared:embedAndSignAppleFrameworkForXcode`, which builds the static `Shared` framework for the
+# active CONFIGURATION / SDK into ../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME).
+# Slices: arm64 device + arm64 simulator only (Apple Silicon; Intel is out of scope).
+name: StackOverflowTopUsers
+
+options:
+  bundleIdPrefix: dev.filip.sotopusers
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+
+settings:
+  base:
+    # Swift 5 language mode (Swift 5.10 semantics under Xcode 16's compiler); SWIFT_VERSION only
+    # accepts major modes (4, 4.2, 5, 6).
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # The Kotlin framework has no x86_64 simulator slice.
+    ARCHS: arm64
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_STYLE: Automatic
+    KOTLIN_FRAMEWORK_DIR: "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+
+fileGroups:
+  - Config
+  - README.md
+
+targets:
+  StackOverflowTopUsers:
+    type: application
+    platform: iOS
+    sources:
+      - path: StackOverflowTopUsers
+    preBuildScripts:
+      - name: Build Kotlin Shared framework
+        basedOnDependencyAnalysis: false
+        showEnvVars: false
+        script: |
+          set -eo pipefail
+          if [ "${SKIP_KOTLIN_BUILD:-}" = "YES" ]; then
+            echo "Skipping Kotlin framework build (SKIP_KOTLIN_BUILD=YES)"
+            exit 0
+          fi
+          # Xcode does not inherit a login shell: find a JDK if JAVA_HOME is not already set (CI sets it).
+          if [ -z "${JAVA_HOME:-}" ] && [ -x /usr/libexec/java_home ]; then
+            JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
+            export JAVA_HOME
+          fi
+          cd "$SRCROOT/.."
+          ./gradlew --console=plain :shared:embedAndSignAppleFrameworkForXcode
+    settings:
+      base:
+        PRODUCT_NAME: StackOverflowTopUsers
+        PRODUCT_BUNDLE_IDENTIFIER: dev.filip.sotopusers.ios
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: SO Top Users
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(KOTLIN_FRAMEWORK_DIR)"
+        OTHER_LDFLAGS:
+          - "$(inherited)"
+          - "-framework"
+          - "Shared"
+      configs:
+        # Partial Info.plists merged into the generated one. Only Debug carries the mock base URL
+        # key and the localhost ATS exception.
+        Debug:
+          INFOPLIST_FILE: Config/Info-Debug.plist
+        Release:
+          INFOPLIST_FILE: Config/Info-Release.plist
+
+  StackOverflowTopUsersTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: StackOverflowTopUsersTests
+    dependencies:
+      - target: StackOverflowTopUsers
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.filip.sotopusers.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/StackOverflowTopUsers.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/StackOverflowTopUsers"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        # `@testable import StackOverflowTopUsers` loads the app module, which imports `Shared`, so the
+        # compiler must find the framework's module map...
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(KOTLIN_FRAMEWORK_DIR)"
+        # ...but the static framework must be linked into the host app only. A second copy in the
+        # test bundle would mean two Kotlin runtimes in one process.
+        OTHER_SWIFT_FLAGS:
+          - "$(inherited)"
+          - "-Xfrontend"
+          - "-disable-autolink-framework"
+          - "-Xfrontend"
+          - "Shared"
+
+  StackOverflowTopUsersUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: StackOverflowTopUsersUITests
+    dependencies:
+      - target: StackOverflowTopUsers
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.filip.sotopusers.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: StackOverflowTopUsers
+
+schemes:
+  StackOverflowTopUsers:
+    build:
+      targets:
+        StackOverflowTopUsers: all
+        StackOverflowTopUsersTests: [test]
+        StackOverflowTopUsersUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: StackOverflowTopUsersTests
+          parallelizable: false
+        - name: StackOverflowTopUsersUITests
+          parallelizable: false
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

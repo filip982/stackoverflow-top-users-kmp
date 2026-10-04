@@ -1,0 +1,142 @@
+name: macos
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-ios:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Compile shared for iOS (device + simulator arm64)
+        run: ./gradlew --console=plain :shared:compileKotlinIosArm64 :shared:compileKotlinIosSimulatorArm64
+      - name: Run shared commonTest on iOS simulator
+        run: ./gradlew --console=plain :shared:iosSimulatorArm64Test
+
+  # iOS app: XcodeGen project → app + unit-test bundle for the iOS Simulator (the Kotlin `Shared`
+  # framework is built by the Xcode pre-build phase via :shared:embedAndSignAppleFrameworkForXcode)
+  # → XCTest store/config tests + Swift↔Kotlin contract tests.
+  ios-app:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      DESTINATION: platform=iOS Simulator,name=iPhone 16
+      DERIVED_DATA: ${{ github.workspace }}/build/DerivedData
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Select Xcode 16 and ensure an iPhone 16 simulator
+        run: iosApp/scripts/ci-select-xcode.sh
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: iosApp
+        run: xcodegen generate
+      - name: Build app and tests for the iOS Simulator
+        run: >
+          xcodebuild build-for-testing
+          -project iosApp/StackOverflowTopUsers.xcodeproj
+          -scheme StackOverflowTopUsers
+          -configuration Debug
+          -destination "$DESTINATION"
+          -derivedDataPath "$DERIVED_DATA"
+      - name: Run unit tests (stores, config, Shared contract) on the simulator
+        run: >
+          xcodebuild test-without-building
+          -project iosApp/StackOverflowTopUsers.xcodeproj
+          -scheme StackOverflowTopUsers
+          -destination "$DESTINATION"
+          -derivedDataPath "$DERIVED_DATA"
+          -only-testing:StackOverflowTopUsersTests
+          -resultBundlePath build/UnitTests.xcresult
+      - name: Upload unit test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unit-test-results
+          path: build/UnitTests.xcresult
+
+  # XCUITest acceptance suite: the real app against the standalone :mockserver on the runner. The
+  # simulator shares the host network, so the app reaches it at http://localhost:8080 (debug-only ATS
+  # exception). The URL reaches the test runner via TEST_RUNNER_MOCK_BASE_URL and the app via its
+  # launch environment.
+  ios-ui-tests:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      DESTINATION: platform=iOS Simulator,name=iPhone 16
+      DERIVED_DATA: ${{ github.workspace }}/build/DerivedData
+      MOCK_PORT: "8080"
+      TEST_RUNNER_MOCK_BASE_URL: http://localhost:8080
+      MOCKSERVER_LOG: ${{ github.workspace }}/mockserver.log
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Select Xcode 16 and ensure an iPhone 16 simulator
+        run: iosApp/scripts/ci-select-xcode.sh
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: iosApp
+        run: xcodegen generate
+      - name: Build app and UI tests for the iOS Simulator
+        run: >
+          xcodebuild build-for-testing
+          -project iosApp/StackOverflowTopUsers.xcodeproj
+          -scheme StackOverflowTopUsers
+          -configuration Debug
+          -destination "$DESTINATION"
+          -derivedDataPath "$DERIVED_DATA"
+      - name: Start mockserver on the host
+        run: iosApp/scripts/start-mockserver.sh "$MOCK_PORT"
+      - name: Run XCUITest acceptance suite against the mockserver
+        run: >
+          xcodebuild test-without-building
+          -project iosApp/StackOverflowTopUsers.xcodeproj
+          -scheme StackOverflowTopUsers
+          -destination "$DESTINATION"
+          -derivedDataPath "$DERIVED_DATA"
+          -only-testing:StackOverflowTopUsersUITests
+          -resultBundlePath build/UITests.xcresult
+      - name: Stop mockserver
+        if: always()
+        run: curl -sf -X POST "http://localhost:$MOCK_PORT/__shutdown" || true
+      - name: Upload UI test results and mockserver log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ui-test-results
+          path: |
+            build/UITests.xcresult
+            mockserver.log

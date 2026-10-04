@@ -1,0 +1,111 @@
+name: linux
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shared-and-mockserver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      # Android SDK comes preinstalled on GitHub-hosted runners (ANDROID_HOME).
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit + integration tests (jvm, android unit, mockserver)
+        run: ./gradlew --console=plain :shared:jvmTest :shared:testDebugUnitTest :mockserver:test
+      - name: Compile shared for android + jvm
+        run: ./gradlew --console=plain :shared:assembleDebug :shared:compileKotlinJvm
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-reports
+          path: |
+            shared/build/reports/tests/
+            mockserver/build/reports/tests/
+
+  android-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Store unit tests + Robolectric Compose smoke test
+        run: ./gradlew --console=plain :androidApp:testDebugUnitTest
+      - name: Assemble debug app and instrumented test APK
+        run: ./gradlew --console=plain :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app-test-reports
+          path: androidApp/build/reports/tests/
+
+  # Instrumented acceptance suite: real app on an emulator against the standalone :mockserver on the
+  # runner host. The emulator reaches the host loopback at 10.0.2.2, baked in via -PsoBaseUrl.
+  android-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MOCK_PORT: "8080"
+      SO_BASE_URL: http://10.0.2.2:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build mockserver distribution and APKs
+        run: >
+          ./gradlew --console=plain :mockserver:installDist
+          :androidApp:assembleDebug :androidApp:assembleDebugAndroidTest -PsoBaseUrl=$SO_BASE_URL
+      - name: Start mockserver on the host
+        run: |
+          nohup mockserver/build/install/mockserver/bin/mockserver "$MOCK_PORT" > mockserver.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf "http://localhost:$MOCK_PORT/__ready" && exit 0
+            sleep 1
+          done
+          cat mockserver.log
+          exit 1
+      - name: Run instrumented suite on emulator (API 34, x86_64)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: ./gradlew --console=plain :androidApp:connectedDebugAndroidTest -PsoBaseUrl=$SO_BASE_URL
+      - name: Stop mockserver
+        if: always()
+        run: curl -sf -X POST "http://localhost:$MOCK_PORT/__shutdown" || true
+      - name: Upload instrumented reports and mockserver log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-reports
+          path: |
+            androidApp/build/reports/androidTests/
+            androidApp/build/outputs/androidTest-results/
+            mockserver.log
