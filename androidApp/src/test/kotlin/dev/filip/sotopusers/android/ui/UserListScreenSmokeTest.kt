@@ -53,11 +53,13 @@ class UserListScreenSmokeTest {
         compose.onNodeWithTag(TestTags.USER_LIST).performScrollToNode(hasTestTag(TestTags.userRow(4086)))
         compose.onNodeWithTag(TestTags.USER_LIST).performScrollToNode(hasTestTag(TestTags.userRow(jon)))
 
-        compose.onNodeWithTag(TestTags.followedIndicator(jon)).assertDoesNotExist()
+        // The indicator sits inside the row's merged (clickable) semantics, so query the unmerged tree.
+        compose.onNodeWithTag(TestTags.followedIndicator(jon), useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag(TestTags.followButton(jon)).performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithTag(TestTags.followedIndicator(jon)).assertIsDisplayed()
+        compose.onNodeWithTag(TestTags.followedIndicator(jon), useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithText("Unfollow", useUnmergedTree = true).assertIsDisplayed()
         assertEquals(setOf(jon), core.followStore.saved)
     }
 }
