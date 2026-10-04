@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 include(":shared")
 include(":mockserver")
+include(":androidApp")
